@@ -11,7 +11,7 @@ module System.IO.Cautious
 
 import Prelude hiding (writeFile)
 
-import System.Directory (renameFile)
+import System.Directory (canonicalizePath, renameFile)
 import System.FilePath (splitFileName)
 import System.IO (openTempFile)
 #ifdef _POSIX
@@ -41,7 +41,8 @@ writeFile = writeFileWithBackup $ return ()
 -- old version of the file.
 writeFileWithBackup :: IO () -> FilePath -> String -> IO ()
 writeFileWithBackup backup fp text = do
-    (tempFP, handle) <- uncurry openTempFile $ splitFileName fp
+    cfp <- canonicalizePath fp
+    (tempFP, handle) <- uncurry openTempFile $ splitFileName cfp
 #ifdef _POSIX
     fd <- handleToFd handle
     let writeSync = (setFdOption fd SynchronousWrites True >>) . writeAll fd
@@ -54,4 +55,4 @@ writeFileWithBackup backup fp text = do
     hClose handle
 #endif
     backup
-    renameFile tempFP fp
+    renameFile tempFP cfp
