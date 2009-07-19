@@ -10,38 +10,48 @@ module System.IO.Cautious
   ) where
 
 import Prelude hiding (writeFile)
-import qualified Prelude
 
 import System.Directory (renameFile)
+import System.FilePath (splitFileName)
+import System.IO (openTempFile)
 #ifdef _POSIX
-import System.IO (hFlush, hPutStr)
-import System.Posix.Files (ownerReadMode, ownerWriteMode, unionFileModes)
-import System.Posix.IO (closeFd, createFile, FdOption (SynchronousWrites), fdToHandle, setFdOption)
+import Control.Monad (when)
+import Data.Function (fix)
+import Data.List (genericDrop)
+import System.Posix.IO (closeFd, FdOption (SynchronousWrites), fdWrite, handleToFd, setFdOption)
+import System.Posix.Types (Fd)
 
--- Don't bother to split into two writes if the string to write is shorter than this
+-- | Don't bother to split into two writes if the string to write is shorter than this
 splitLimit :: Int
 splitLimit = 65536
+
+-- | Write the entire contents of a string to a file descriptor. Assumes blocking mode.
+writeAll :: Fd -> String -> IO ()
+writeAll fd = fix $ \me s -> when (not $ null s) $ do
+    count <- fdWrite fd s
+    me $ genericDrop count s
+#else
+import System.IO (hPutStr, hClose)
 #endif
 
 writeFile :: FilePath -> String -> IO ()
-writeFile = writeFileWithBackup (const $ return ())
+writeFile = writeFileWithBackup $ return ()
 
 -- | Backs up the old version of the file with "backup". "backup" must not fail if there is no
 -- old version of the file.
-writeFileWithBackup :: (FilePath -> IO ()) -> FilePath -> String -> IO ()
+writeFileWithBackup :: IO () -> FilePath -> String -> IO ()
 writeFileWithBackup backup fp text = do
-     let tempFP = fp ++ ".tmp"
+    (tempFP, handle) <- uncurry openTempFile $ splitFileName fp
 #ifdef _POSIX
-     fd <- createFile tempFP $ unionFileModes ownerReadMode ownerWriteMode
-     handle <- fdToHandle fd
-     let writeSync = (setFdOption fd SynchronousWrites True >>) . hPutStr handle
-     if length text < splitLimit
-       then writeSync text
-       else hPutStr handle (init text) >> writeSync [last text]
-     hFlush handle
-     closeFd fd
+    fd <- handleToFd handle
+    let writeSync = (setFdOption fd SynchronousWrites True >>) . writeAll fd
+    if null $ drop splitLimit text
+      then writeSync text
+      else writeAll fd (init text) >> writeSync [last text]
+    closeFd fd
 #else
-     Prelude.writeFile tempFP text
+    hPutStr handle text
+    hClose handle
 #endif
-     backup fp
-     renameFile tempFP fp
+    backup
+    renameFile tempFP fp

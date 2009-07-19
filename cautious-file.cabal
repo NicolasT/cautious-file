@@ -1,5 +1,5 @@
 name:                cautious-file
-version:             0.0
+version:             0.1
 Cabal-Version:	     >= 1.6
 synopsis:            Ways to write a file cautiously, to reduce the chances of data loss due to crashes or power failures
 description:         If the posix flag is enabled, posix-specific functions are used to reduce the chance of data loss further
@@ -23,7 +23,7 @@ Flag posix
     default: True
 
 Library
-  build-Depends:	base >= 4, base < 5, directory
+  build-Depends:	base >= 4, base < 5, directory, filepath
   if flag(posix)
     cpp-options: -D_POSIX
     build-Depends: unix
