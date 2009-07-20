@@ -13,6 +13,7 @@ build-type:	     Custom
 stability:	     experimental
 bug-reports:	     mailto:greenrd@greenrd.org
 tested-with:	     GHC == 6.10.3
+extra-source-files:      Test.hs
 
 source-repository head
   type:     darcs
