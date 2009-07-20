@@ -6,52 +6,50 @@
 -- when importing this module.
 module System.IO.Cautious
   ( writeFile
+  , writeFileL
   , writeFileWithBackup
+  , writeFileWithBackupL
   ) where
 
 import Prelude hiding (writeFile)
 
+import Data.ByteString.Lazy.Char8 (ByteString, pack)
 import System.Directory (canonicalizePath, renameFile)
 import System.FilePath (splitFileName)
 import System.IO (openTempFile)
 #ifdef _POSIX
-import Control.Monad (unless)
-import Data.Function (fix)
-import Data.List (genericDrop)
-import System.Posix.IO (closeFd, FdOption (SynchronousWrites), fdWrite, handleToFd, setFdOption)
-import System.Posix.Types (Fd)
-
--- | Don't bother to split into two writes if the string to write is shorter than this
-splitLimit :: Int
-splitLimit = 65536
-
--- | Write the entire contents of a string to a file descriptor. Assumes blocking mode.
-writeAll :: Fd -> String -> IO ()
-writeAll fd = fix $ \me s -> unless (null s) $ do
-    count <- fdWrite fd s
-    me $ genericDrop count s
+import System.Posix.ByteLevel (writeAllL)
+import System.Posix.Fsync (fsync)
+import System.Posix.IO (closeFd, handleToFd)
 #else
-import System.IO (hPutStr, hClose)
+import Data.ByteString.Lazy (hPut)
+import System.IO (hClose)
 #endif
 
 writeFile :: FilePath -> String -> IO ()
 writeFile = writeFileWithBackup $ return ()
 
+writeFileL :: FilePath -> ByteString -> IO ()
+writeFileL = writeFileWithBackupL $ return ()
+
 -- | Backs up the old version of the file with "backup". "backup" must not fail if there is no
 -- old version of the file.
 writeFileWithBackup :: IO () -> FilePath -> String -> IO ()
-writeFileWithBackup backup fp text = do
+writeFileWithBackup backup fp = writeFileWithBackupL backup fp . pack
+
+-- | Backs up the old version of the file with "backup". "backup" must not fail if there is no
+-- old version of the file.
+writeFileWithBackupL :: IO () -> FilePath -> ByteString -> IO ()
+writeFileWithBackupL backup fp bs = do
     cfp <- canonicalizePath fp
     (tempFP, handle) <- uncurry openTempFile $ splitFileName cfp
 #ifdef _POSIX
     fd <- handleToFd handle
-    let writeSync = (setFdOption fd SynchronousWrites True >>) . writeAll fd
-    if null $ drop splitLimit text
-      then writeSync text
-      else writeAll fd (init text) >> writeSync [last text]
+    writeAllL fd bs
+    fsync fd
     closeFd fd
 #else
-    hPutStr handle text
+    hPut handle bs
     hClose handle
 #endif
     backup
