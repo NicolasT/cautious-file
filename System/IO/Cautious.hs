@@ -15,7 +15,7 @@ import System.Directory (canonicalizePath, renameFile)
 import System.FilePath (splitFileName)
 import System.IO (openTempFile)
 #ifdef _POSIX
-import Control.Monad (when)
+import Control.Monad (unless)
 import Data.Function (fix)
 import Data.List (genericDrop)
 import System.Posix.IO (closeFd, FdOption (SynchronousWrites), fdWrite, handleToFd, setFdOption)
@@ -27,7 +27,7 @@ splitLimit = 65536
 
 -- | Write the entire contents of a string to a file descriptor. Assumes blocking mode.
 writeAll :: Fd -> String -> IO ()
-writeAll fd = fix $ \me s -> when (not $ null s) $ do
+writeAll fd = fix $ \me s -> unless (null s) $ do
     count <- fdWrite fd s
     me $ genericDrop count s
 #else
