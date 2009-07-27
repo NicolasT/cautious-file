@@ -19,6 +19,7 @@ import System.FilePath (splitFileName)
 import System.IO (openTempFile)
 #ifdef _POSIX
 import System.Posix.ByteLevel (writeAllL)
+import System.Posix.Files (fileMode, getFileStatus, setFdMode)
 import System.Posix.Fsync (fsync)
 import System.Posix.IO (closeFd, handleToFd)
 #else
@@ -46,6 +47,8 @@ writeFileWithBackupL backup fp bs = do
 #ifdef _POSIX
     fd <- handleToFd handle
     writeAllL fd bs
+    st <- getFileStatus cfp
+    setFdMode fd $ fileMode st
     fsync fd
     closeFd fd
 #else
