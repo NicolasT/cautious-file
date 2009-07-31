@@ -18,6 +18,9 @@ import System.Directory (canonicalizePath, renameFile)
 import System.FilePath (splitFileName)
 import System.IO (openTempFile)
 #ifdef _POSIX
+import Control.Exception (tryJust)
+import Control.Monad (guard)
+import System.IO.Error (isDoesNotExistError)
 import System.Posix.ByteLevel (writeAllL)
 import System.Posix.Files (fileMode, getFileStatus, setFdMode)
 import System.Posix.Fsync (fsync)
@@ -47,8 +50,7 @@ writeFileWithBackupL backup fp bs = do
 #ifdef _POSIX
     fd <- handleToFd handle
     writeAllL fd bs
-    st <- getFileStatus cfp
-    setFdMode fd $ fileMode st
+    tryJust (\e -> guard (isDoesNotExistError e) >> return ()) $ setFdMode fd . fileMode =<< getFileStatus cfp
     fsync fd
     closeFd fd
 #else
