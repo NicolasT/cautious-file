@@ -50,7 +50,7 @@ writeFileWithBackupL backup fp bs = do
 #ifdef _POSIX
     fd <- handleToFd handle
     writeAllL fd bs
-    tryJust (guard . isDoesNotExistError) $ setFdMode fd . fileMode =<< getFileStatus cfp
+    _ <- tryJust (guard . isDoesNotExistError) $ setFdMode fd . fileMode =<< getFileStatus cfp
     fsync fd
     closeFd fd
 #else
