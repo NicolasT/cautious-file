@@ -29,7 +29,7 @@ defaultSeed = 1234
 
 stdTestCase :: Int -> FilePath -> IO ()
 stdTestCase dataLen outputFile = do
-    testData <- replicateM dataLen $ randomRIO ('\0', '\255')
+    testData <- replicateM dataLen $ randomRIO ('\0', '\127')
     writeFile outputFile testData
     testData' <- readFile outputFile
     unless (testData == testData') . fail $ "stdTestCase: failed with " ++ show dataLen ++ " " ++ show outputFile
