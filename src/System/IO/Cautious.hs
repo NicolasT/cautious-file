@@ -13,14 +13,14 @@ module System.IO.Cautious
 
 import Prelude hiding (writeFile)
 
+import Control.Exception (tryJust)
+import Control.Monad (guard)
 import Data.ByteString.Lazy.Char8 (ByteString, pack)
 import System.Directory (canonicalizePath, renameFile)
 import System.FilePath (splitFileName)
 import System.IO (openTempFile)
-#ifdef _POSIX
-import Control.Exception (tryJust)
-import Control.Monad (guard)
 import System.IO.Error (isDoesNotExistError)
+#ifdef _POSIX
 import System.Posix.ByteLevel (writeAllL)
 import System.Posix.Files (fileMode, getFileStatus, setFdMode)
 import System.Posix.Fsync (fsync)
@@ -41,16 +41,19 @@ writeFileL = writeFileWithBackupL $ return ()
 writeFileWithBackup :: IO () -> FilePath -> String -> IO ()
 writeFileWithBackup backup fp = writeFileWithBackupL backup fp . pack
 
+ignoreNotFound :: IO a -> IO (Either () a)
+ignoreNotFound = tryJust (guard . isDoesNotExistError)
+
 -- | Backs up the old version of the file with "backup". "backup" must not fail if there is no
 -- old version of the file.
 writeFileWithBackupL :: IO () -> FilePath -> ByteString -> IO ()
 writeFileWithBackupL backup fp bs = do
-    cfp <- canonicalizePath fp
+    cfp <- either (const fp) id `fmap` ignoreNotFound (canonicalizePath fp)
     (tempFP, handle) <- uncurry openTempFile $ splitFileName cfp
 #ifdef _POSIX
     fd <- handleToFd handle
     writeAllL fd bs
-    _ <- tryJust (guard . isDoesNotExistError) $ setFdMode fd . fileMode =<< getFileStatus cfp
+    _ <- ignoreNotFound $ setFdMode fd . fileMode =<< getFileStatus cfp
     fsync fd
     closeFd fd
 #else
