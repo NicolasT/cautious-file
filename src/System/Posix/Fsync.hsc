@@ -2,7 +2,7 @@
 module System.Posix.Fsync (fsync) where
 
 import Foreign.C.Error (throwErrnoIfMinus1_)
-import Foreign.C.Types (CInt)
+import Foreign.C.Types (CInt(..))
 import System.Posix.Types (Fd(..))
 
 #include <unistd.h>

@@ -9,7 +9,7 @@ import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Function (fix)
 import Foreign.C.Error (throwErrnoIfMinus1Retry)
 import Foreign.C.String (CString, CStringLen)
-import Foreign.C.Types (CInt, CSize)
+import Foreign.C.Types (CInt(..), CSize(..))
 import System.Posix.Types (ByteCount, Fd(..))
 
 #include <unistd.h>
