@@ -1,6 +1,6 @@
 name:                cautious-file
 version:             1.0
-Cabal-Version:	     >= 1.6
+Cabal-Version:	     >= 1.8
 synopsis:            Ways to write a file cautiously, to reduce the chances of problems such as data loss due to crashes or power failures
 description:         On non-Windows systems, posix-specific functions are used to reduce the chance of data loss further
 category:            System
@@ -13,7 +13,6 @@ build-type:	     Custom
 stability:	     experimental
 bug-reports:	     mailto:greenrd@greenrd.org
 tested-with:	     GHC == 7.0.2
-extra-source-files:      Test.hs
 
 source-repository head
   type:     darcs
@@ -31,4 +30,13 @@ Library
     build-Depends: unix
     exposed-modules:    System.Posix.ByteLevel, System.Posix.Fsync
   exposed-modules:      System.IO.Cautious
+  ghc-options:          -Wall
+
+Test-Suite test
+  type:                 exitcode-stdio-1.0
+  main-is:              Test.hs
+  build-depends:        base >= 4, base < 5, random, directory, cautious-file
+  if flag(posix) && !os(Windows)
+    cpp-options: -D_POSIX
+    build-depends: unix
   ghc-options:          -Wall
